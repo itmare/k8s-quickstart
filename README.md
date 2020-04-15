@@ -3,8 +3,8 @@ Kubernetes 클러스터 구축하기: Quick Start
 
 #### 시나리오
 
-1.	kubespray를 통해
-2.	gcloud를 사용하여 3개의 gce instance를 생성하고
+1.	gcloud를 사용하여 3개의 gce instance를 생성하고
+2.	kubespray를 통해
 3.	kubernetes cluster를 구축하고
 4.	node.js sample server를 docker image로 생성하고
 5.	해당 이미지를 Google Container Registry(GCR)에 배포하고
@@ -12,13 +12,9 @@ Kubernetes 클러스터 구축하기: Quick Start
 7.	nodePort로 service를 생성해서
 8.	해당 웹페이지에 접속한다.
 
-9.	환경:
+<br><br><br>
 
-	-	macos
-
-### 준비
-
-#### gcloud sdk 설치
+### gcloud sdk 설치
 
 [macos에서 gcloud 설치하기](https://cloud.google.com/sdk/docs/quickstart-macos)
 
@@ -186,7 +182,9 @@ echo "complete -F __start_kubectl k" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-##### ReplicationController object를 등록하기 위해 hello-node-rc.yaml 생성
+##### ReplicationController object 등록
+
+-	hello-node-rc.yaml 생성
 
 ```shell
 apiVersion: v1
@@ -211,7 +209,41 @@ spec:
         - containerPort: 8080
 ```
 
-##### service object를 등록하기 위해 hello-node-svc.yaml 생성
+-	rc 등록
+
+```shell
+k create -f hello-node-rc.yaml
+```
+
+-	rc 등록 확인
+
+```shell
+k get rc
+
+NAME            DESIRED   CURRENT   READY   AGE
+hello-node-rc   3         3         3       2m
+```
+
+-	pod 생성 확인
+
+```shell
+k get pod
+
+NAME                  READY   STATUS    RESTARTS   AGE
+hello-node-rc-56xt9   1/1     Running   0          2m
+hello-node-rc-cmb26   1/1     Running   0          2m
+hello-node-rc-mjftq   1/1     Running   0          2m
+```
+
+-	전체 확인 (생성되어 있는 모든 object을 보여준다)
+
+```shell
+k get all
+```
+
+##### service object 등록
+
+-	hello-node-svc.yaml 생성
 
 ```shell
 apiVersion: v1
@@ -225,6 +257,45 @@ spec:
     - port: 80
       protocol: TCP
       targetPort: 8080
-      nodePort: 32000
+      nodePort: 32000  # nodeport로 service를 사용하면, port range는 30000-32767
   type: NodePort
 ```
+
+-	service 등록
+
+```shell
+k create -f hello-node-svc.yaml
+```
+
+-	확인
+
+```shell
+k create svc
+
+NAME             TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+hello-node-svc   NodePort    10.233.41.49   <none>        80:32000/TCP   26m
+kubernetes       ClusterIP   10.233.0.1     <none>        443/TCP        35m
+```
+
+##### 웹페이지에서 확인
+
+-	현재 gcp계정에서 node 정보 확인
+
+```shell
+gcloud compute instances list
+
+NAME        ZONE               MACHINE_TYPE  PREEMPTIBLE  INTERNAL_IP    EXTERNAL_IP    STATUS
+kube01      asia-northeast3-c  n1-highmem-4               10.178.15.198  34.64.241.125  RUNNING
+kube02      asia-northeast3-c  n1-highmem-4               10.178.15.199  34.64.71.112   RUNNING
+kube03      asia-northeast3-c  n1-highmem-4               10.178.15.200  34.64.168.165  RUNNING
+```
+
+-	external ip와 nodeport 32000를 사용해서 웹페이지 접속 (웹페이지 접속마다 pod호스트명이 변경됨)
+
+<img src="./pictures/webpage.png" width=400 border=1>
+
+<br><br>
+
+### Client가 pod에 접속하는 과정
+
+<img src="./pictures/port-flow.png">
