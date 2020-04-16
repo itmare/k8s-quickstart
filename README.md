@@ -24,10 +24,11 @@ Kubernetes 클러스터 구축하기: Quick Start
 -	원하는 instance name 및 옵션 변경해 보자
 
 ```shell
-gcloud compute instances create kube01  \   # kube02, kube03도 생성
+# kube02, kube03도 생성
+gcloud compute instances create kube01  \
 --labels=username=jinwookchung  \
 --zone=asia-northeast3-c  \
---machine-type=n1-highmem-4  \
+--machine-type=n1-highmem-8   \
 --image-project=centos-cloud  \
 --image-family=centos-7  \
 --boot-disk-size=20GB  \
