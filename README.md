@@ -21,7 +21,7 @@ Kubernetes 클러스터 구축하기: Quick Start
 ### instance 생성
 
 -	local에서 원격으로 gcp instance(gce)를 kube01,kube02,kube03 이름으로 생성
--	원하는 instance name 및 옵션 변경해 보자
+-	원하는 instance name 및 옵션 변경/추가 해보자
 
 ```shell
 # kube02, kube03도 생성
@@ -51,10 +51,19 @@ ssh-keygen
 # 엔터,엔터 눌러 생성해도 되지만, 키 관리를 위해 키이름 변경 권고
 ```
 
--	gce metadata에 생성한 key 복사
+#### gce metadata에 생성한 key 복사
+
+##### gcloud를 사용하여 gce metadata에 ssh key 저장
 
 ```shell
-cat ~/.ssh/id_rsa.pub
+echo "$(id -un):$(cat ~/.ssh/<local_sshkey>.pub)" > key-list
+gcloud compute project-info add-metadata --metadata-from-file ssh-keys=key-list
+```
+
+##### console을 사용하여 gce metadata에 ssh key 저장
+
+```shell
+cat ~/.ssh/<local_sshkey>.pub
 ```
 
 -	output을 복사하여, gce metadata ssh에 추가
@@ -69,6 +78,13 @@ ssh -i ~/.ssh/id_rsa <username>@<kube01_external_ip>
 ```
 
 ### kube01의 key 복사
+
+##### gcloud sshkey 복사
+
+```shell
+echo "$(id -un):$(cat ~/.ssh/id_rsa.pub)" > key-list
+gcloud compute project-info add-metadata --metadata-from-file ssh-keys=key-list
+```
 
 -	kubespray를 통한 쿠버 설치를 위해 kube01 키 사용
 -	kube01에서 위의 과정 반복
