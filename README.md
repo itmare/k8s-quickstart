@@ -342,12 +342,20 @@ Kubernetes 클러스터 구축하기: Quick Start using kubeadm
 4.	마스터의 kubeadm 초기화하고
 5.	클러스터링
 
+<br>
+
 도커 설치
 ---------
 
+-	모든 노드에 설치
+-	root로 실행
+
 ```shell
-sudo yum install docker
+yum install docker
+sytemctl start docker
 ```
+
+<br>
 
 kubeadm, kubelet, kubectl 설치
 ------------------------------
@@ -376,6 +384,8 @@ yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
 systemctl enable --now kubelet
 ```
 
+<br>
+
 swap 끄기
 ---------
 
@@ -390,6 +400,8 @@ sudo swapoff -a
 // 영구적용
 sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 ```
+
+<br>
 
 마스터 노드 초기화 (마스터 노드만 실행)
 ---------------------------------------
@@ -428,6 +440,8 @@ mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
+
+<br>
 
 워커 노드 조인하여 클러스터 설정
 --------------------------------
