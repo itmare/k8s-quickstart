@@ -1,5 +1,5 @@
-Kubernetes 클러스터 구축하기: Quick Start
-=========================================
+Kubernetes 클러스터 구축하기: Quick Start using Kubespray
+=========================================================
 
 #### 시나리오
 
@@ -28,7 +28,7 @@ Kubernetes 클러스터 구축하기: Quick Start
 gcloud compute instances create kube01  \
 --labels=username=jinwookchung  \
 --zone=asia-northeast3-c  \
---machine-type=n1-highmem-8   \
+--machine-type=n1-highmem-2   \
 --image-project=centos-cloud  \
 --image-family=centos-7  \
 --boot-disk-size=20GB  \
@@ -70,14 +70,14 @@ cat ~/.ssh/<local_sshkey>.pub
 
 <img src='./pictures/metadata-ssh.png'>
 
+### kube01의 key 복사
+
 -	master로 사용할 kube01에 접속한다.
 
 ```shell
 # private key와 key 생성시 사용한 username 사용
 ssh -i ~/.ssh/id_rsa <username>@<kube01_external_ip>
 ```
-
-### kube01의 key 복사
 
 ##### gcloud sshkey 복사
 
@@ -123,8 +123,34 @@ vi inventory.ini
 ...
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-## kubernetes 설치 (5~10분정도 소요)
+## kubernetes 설치 (10분정도 소요)
 ansible-playbook -i /home/jinwookchung/kubespray/inventory/my-cluster/inventory.ini -v --become --become-user=root /home/jinwookchung/kubespray/cluster.yml
+```
+
+##### bash-completion 설치 및 kubectl alias 등록
+
+-	kubectl command 사용시 root로 변경 [(링크)](https://kubernetes.io/docs/tasks/tools/install-kubectl/#enabling-shell-autocompletion)
+
+-	bash-completion 설치
+
+```shell
+yum install bash-completion -y
+source /usr/share/bash-completion/bash_completion
+echo 'source <(kubectl completion bash)' >>~/.bashrc
+```
+
+-	kubectl alias 설정
+
+```shell
+echo "alias kubectl='/usr/local/bin/kubectl'" >> ~/.bashrc
+```
+
+-	편의를 위해 kubectl 대신 k 사용
+
+```shell
+echo "alias k=kubectl" >> ~/.bashrc
+echo "complete -F __start_kubectl k" >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### docker image 만들기
@@ -160,7 +186,7 @@ CMD node server.js > log.out
 -	Docker 패키징 [(참고)](https://cloud.google.com/container-registry/docs/pushing-and-pulling)
 
 ```shell
-docker build -t asia.gcr.io/<gcp_project_name>/hello-node:v1
+docker build -t gcr.io/<gcp_project_name>/hello-node:v1 .
 # [asia 데이터 센터]/[해당프로젝트이름]/[이미지이름:버전]
 ```
 
@@ -182,22 +208,7 @@ docker push asia.gcr.io/<gcp_project_name>/hello-node:v1
 
 ### 쿠버네티스에 서비스 배포하기
 
-##### kube01에 kubectl alias 등록
-
--	kubespray로 설치하면 kubectl
-
-```shell
-sudo su
-echo "alias kubectl='/usr/local/bin/kubectl'" >> ~/.bashrc
-```
-
--	(option) 편의를 위해 kubectl 대신 k 사용
-
-```shell
-echo "alias k=kubectl" >> ~/.bashrc
-echo "complete -F __start_kubectl k" >> ~/.bashrc
-source ~/.bashrc
-```
+<br>
 
 ##### ReplicationController object 등록
 
@@ -263,6 +274,7 @@ k get all
 -	hello-node-svc.yaml 생성
 
 ```shell
+# nodeport로 service를 사용하면, port range는 30000-32767
 apiVersion: v1
 kind: Service
 metadata:
@@ -274,8 +286,8 @@ spec:
     - port: 80
       protocol: TCP
       targetPort: 8080
-      nodePort: 32000  # nodeport로 service를 사용하면, port range는 30000-32767
-  type: NodePort
+      nodePort: 32000  
+  type: NodePortw
 ```
 
 -	service 등록
@@ -316,3 +328,121 @@ kube03      asia-northeast3-c  n1-highmem-4               10.178.15.200  34.64.1
 ### Client가 pod에 접속하는 과정
 
 <img src="./pictures/port-flow.png">
+
+<br><br><br><br><br>
+
+Kubernetes 클러스터 구축하기: Quick Start using kubeadm
+=======================================================
+
+#### 시나리오
+
+1.	3개의 노드를 1개의 마스터노드와 2개의 워커노드로 사용해서
+2.	모든 노드에 kubeadm, kubelet, kubectl 설치하고
+3.	스왑 꺼주고
+4.	마스터의 kubeadm 초기화하고
+5.	클러스터링
+
+도커 설치
+---------
+
+```shell
+sudo yum install docker
+```
+
+kubeadm, kubelet, kubectl 설치
+------------------------------
+
+-	모든 노드에서 실행
+-	root로 실행
+
+```shell
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+# Set SELinux in permissive mode (effectively disabling it)
+setenforce 0
+sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+systemctl enable --now kubelet
+```
+
+swap 끄기
+---------
+
+-	메모리 가용량을 높이기 위해 디스크를 내리는 행위
+-	디스크로 메모리가 스와핑되는 행위는 쿠버의 방향성과 맞지 않음, 쿠버가 알아서 관리
+-	스왑 발생시 속도가 느려지는 이슈 발생
+-	1.8이후로 스왑을 비활성화해야 작동, 비활성화 안하면 kubelet이 안돌아감
+
+```shell
+// swap 끄기 (일회성)
+sudo swapoff -a  
+// 영구적용
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+```
+
+마스터 노드 초기화 (마스터 노드만 실행)
+---------------------------------------
+
+-	root로 실행
+
+```shell
+kubeadm init  
+```
+
+-	완료 후, output 확인
+
+```
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 10.xxx.xx.xx:6443 --token jf81wq.rwrxxxxxxxxxxxxm \
+    --discovery-token-ca-cert-hash sha256:0a0e1995b315b3e7a1ee40464adfce6a101d3936cbfc6xxxxxxxxxxxxxxxxxxx
+```
+
+-	kube config 설정 (일반유저로 실행)
+
+```shell
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+
+워커 노드 조인하여 클러스터 설정
+--------------------------------
+
+-	admin init을 통해 얻은 cluster join 코드 워커에서 실행
+-	root로 실행
+
+```shell
+kubeadm join 10.xxx.xx.xx:6443 --token jf81wq.rwrxxxxxxxxxxxxm \
+    --discovery-token-ca-cert-hash sha256:0a0e1995b315b3e7a1ee40464adfce6a101d3936cbfc6xxxxxxxxxxxxxxxxxxx
+```
+
+<br><br>
+
+#### 참고
+
+-	[Installing kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
+-	[Creating a single control-plane cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
