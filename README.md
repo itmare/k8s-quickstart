@@ -352,7 +352,7 @@ Kubernetes 클러스터 구축하기: Quick Start using kubeadm
 
 ```shell
 yum install docker
-sytemctl start docker
+systemctl start docker
 ```
 
 <br>
@@ -364,7 +364,7 @@ kubeadm, kubelet, kubectl 설치
 -	root로 실행
 
 ```shell
-cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+cat << EOF > /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
 baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
@@ -395,9 +395,9 @@ swap 끄기
 -	1.8이후로 스왑을 비활성화해야 작동, 비활성화 안하면 kubelet이 안돌아감
 
 ```shell
-// swap 끄기 (일회성)
+# swap 끄기 (일회성)
 sudo swapoff -a  
-// 영구적용
+# 영구적용
 sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 ```
 
@@ -452,6 +452,20 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```shell
 kubeadm join 10.xxx.xx.xx:6443 --token jf81wq.rwrxxxxxxxxxxxxm \
     --discovery-token-ca-cert-hash sha256:0a0e1995b315b3e7a1ee40464adfce6a101d3936cbfc6xxxxxxxxxxxxxxxxxxx
+```
+
+<br>
+
+확인
+----
+
+```shell
+kubectl get nodes
+
+NAME        STATUS   ROLES    AGE   VERSION
+kube01   Ready    master   15m   v1.18.4
+kube02   Ready    <none>   15m   v1.18.4
+kube03   Ready    <none>   15m   v1.18.4
 ```
 
 <br><br>
