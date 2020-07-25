@@ -351,7 +351,7 @@ Kubernetes 클러스터 구축하기: Quick Start using kubeadm
 -	root로 실행
 
 ```shell
-yum install docker
+yum install docker -y
 systemctl start docker
 ```
 
